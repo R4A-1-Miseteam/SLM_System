@@ -1,0 +1,566 @@
+
+<h2 class="sr-only">学習管理アプリ デモ — 目標設定・記録・グラフ・メモ機能を含む</h2>
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --accent: #378ADD;
+  --accent-light: #E6F1FB;
+  --accent-text: #0C447C;
+  --success: #639922;
+  --success-light: #EAF3DE;
+  --success-text: #27500A;
+  --warn: #BA7517;
+  --warn-light: #FAEEDA;
+  --warn-text: #633806;
+  --danger: #E24B4A;
+  --danger-light: #FCEBEB;
+  --danger-text: #791F1F;
+}
+
+body { font-family: var(--font-sans, sans-serif); }
+
+.app { max-width: 680px; margin: 0 auto; padding: 0.5rem 0 2rem; }
+
+.tab-bar {
+  display: flex; gap: 4px; padding: 4px;
+  background: var(--color-background-secondary);
+  border-radius: var(--border-radius-lg);
+  margin-bottom: 1.5rem;
+}
+.tab {
+  flex: 1; padding: 8px 4px; border: none; cursor: pointer;
+  background: transparent; border-radius: var(--border-radius-md);
+  font-size: 13px; font-weight: 400;
+  color: var(--color-text-secondary);
+  transition: all 0.15s;
+}
+.tab.active {
+  background: var(--color-background-primary);
+  color: var(--color-text-primary);
+  font-weight: 500;
+  border: 0.5px solid var(--color-border-tertiary);
+}
+
+.screen { display: none; }
+.screen.active { display: block; }
+
+.section-label {
+  font-size: 11px; font-weight: 500; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--color-text-tertiary);
+  margin-bottom: 8px;
+}
+
+.card {
+  background: var(--color-background-primary);
+  border: 0.5px solid var(--color-border-tertiary);
+  border-radius: var(--border-radius-lg);
+  padding: 1rem 1.25rem;
+  margin-bottom: 12px;
+}
+
+.subject-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 0;
+  border-bottom: 0.5px solid var(--color-border-tertiary);
+}
+.subject-row:last-child { border-bottom: none; padding-bottom: 0; }
+.subject-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.subject-name { flex: 1; font-size: 14px; font-weight: 500; color: var(--color-text-primary); }
+.subject-meta { font-size: 12px; color: var(--color-text-secondary); }
+
+.progress-bar-wrap { height: 6px; background: var(--color-background-secondary); border-radius: 3px; overflow: hidden; margin-top: 4px; }
+.progress-bar-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
+
+.stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+.stat-card {
+  background: var(--color-background-secondary);
+  border-radius: var(--border-radius-md);
+  padding: 12px;
+}
+.stat-label { font-size: 12px; color: var(--color-text-secondary); margin-bottom: 4px; }
+.stat-value { font-size: 22px; font-weight: 500; color: var(--color-text-primary); }
+.stat-unit { font-size: 13px; font-weight: 400; color: var(--color-text-secondary); margin-left: 2px; }
+
+.form-row { margin-bottom: 12px; }
+.form-label { font-size: 13px; color: var(--color-text-secondary); margin-bottom: 6px; display: block; }
+.form-row input, .form-row select, .form-row textarea {
+  width: 100%; padding: 8px 10px; font-size: 14px;
+  border: 0.5px solid var(--color-border-secondary);
+  border-radius: var(--border-radius-md);
+  background: var(--color-background-primary);
+  color: var(--color-text-primary);
+}
+.form-row textarea { resize: vertical; min-height: 72px; line-height: 1.5; }
+.input-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 9px 18px; border-radius: var(--border-radius-md);
+  font-size: 14px; font-weight: 500; cursor: pointer;
+  border: 0.5px solid var(--color-border-secondary);
+  background: transparent; color: var(--color-text-primary);
+  transition: background 0.12s;
+}
+.btn:hover { background: var(--color-background-secondary); }
+.btn-primary {
+  background: var(--accent); color: #fff; border-color: var(--accent);
+}
+.btn-primary:hover { background: #185FA5; }
+.btn-sm { font-size: 12px; padding: 5px 12px; }
+
+.badge {
+  display: inline-block; font-size: 11px; padding: 3px 8px;
+  border-radius: var(--border-radius-md); font-weight: 500;
+}
+.badge-success { background: var(--success-light); color: var(--success-text); }
+.badge-warn { background: var(--warn-light); color: var(--warn-text); }
+.badge-danger { background: var(--danger-light); color: var(--danger-text); }
+.badge-info { background: var(--accent-light); color: var(--accent-text); }
+
+.todo-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 0; border-bottom: 0.5px solid var(--color-border-tertiary);
+}
+.todo-item:last-child { border-bottom: none; }
+.todo-check {
+  width: 18px; height: 18px; border-radius: 50%;
+  border: 1.5px solid var(--color-border-secondary);
+  cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+.todo-check.done { background: var(--success); border-color: var(--success); }
+.todo-text { flex: 1; font-size: 14px; color: var(--color-text-primary); }
+.todo-text.done { text-decoration: line-through; color: var(--color-text-tertiary); }
+.todo-del { font-size: 12px; color: var(--color-text-tertiary); cursor: pointer; }
+.todo-del:hover { color: var(--danger); }
+
+.toast {
+  position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%) translateY(10px);
+  background: var(--color-background-primary); border: 0.5px solid var(--color-border-secondary);
+  border-radius: var(--border-radius-lg); padding: 10px 18px; font-size: 13px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08); opacity: 0;
+  transition: opacity 0.2s, transform 0.2s; pointer-events: none; z-index: 100;
+  white-space: nowrap; color: var(--color-text-primary);
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+.week-label {
+  font-size: 12px; color: var(--color-text-secondary);
+  text-align: center; margin-bottom: 8px;
+}
+.chart-area { position: relative; width: 100%; }
+</style>
+
+<div class="app">
+  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1.25rem;">
+    <div>
+      <div style="font-size:18px; font-weight:500; color:var(--color-text-primary);">StudyLog</div>
+      <div style="font-size:12px; color:var(--color-text-secondary);">2025年 第3週</div>
+    </div>
+    <span class="badge badge-info">今週の進捗 68%</span>
+  </div>
+
+  <div class="tab-bar">
+    <button class="tab active" onclick="switchTab('plan')">計画</button>
+    <button class="tab" onclick="switchTab('do')">記録</button>
+    <button class="tab" onclick="switchTab('check')">グラフ</button>
+    <button class="tab" onclick="switchTab('act')">改善</button>
+  </div>
+
+  <!-- Plan -->
+  <div id="screen-plan" class="screen active">
+    <div class="section-label">今週の目標</div>
+    <div class="card">
+      <div id="subject-list"></div>
+    </div>
+    <div class="section-label">科目を追加</div>
+    <div class="card">
+      <div class="form-row">
+        <label class="form-label">科目名</label>
+        <input type="text" id="new-subject" placeholder="例：数学" />
+      </div>
+      <div class="input-row">
+        <div class="form-row">
+          <label class="form-label">目標時間（分）</label>
+          <input type="number" id="new-minutes" placeholder="120" min="1" max="1440" />
+        </div>
+        <div class="form-row">
+          <label class="form-label">目標ページ数</label>
+          <input type="number" id="new-pages" placeholder="50" min="1" />
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="addSubject()" style="width:100%; margin-top:4px;">追加</button>
+    </div>
+  </div>
+
+  <!-- Do -->
+  <div id="screen-do" class="screen">
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="stat-label">今週の合計時間</div>
+        <div class="stat-value" id="total-minutes-disp">—<span class="stat-unit">分</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">今週のページ数</div>
+        <div class="stat-value" id="total-pages-disp">—<span class="stat-unit">p</span></div>
+      </div>
+    </div>
+    <div class="section-label">学習を記録する</div>
+    <div class="card">
+      <div class="form-row">
+        <label class="form-label">科目</label>
+        <select id="rec-subject"></select>
+      </div>
+      <div class="input-row">
+        <div class="form-row">
+          <label class="form-label">学習時間（分）</label>
+          <input type="number" id="rec-minutes" placeholder="45" min="1" max="1440" />
+        </div>
+        <div class="form-row">
+          <label class="form-label">進んだページ数</label>
+          <input type="number" id="rec-pages" placeholder="10" min="0" />
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="addRecord()" style="width:100%;">保存</button>
+    </div>
+    <div class="section-label">今週の記録</div>
+    <div class="card" id="record-list-card">
+      <div id="record-list" style="font-size:13px; color:var(--color-text-secondary);">まだ記録がありません</div>
+    </div>
+  </div>
+
+  <!-- Check -->
+  <div id="screen-check" class="screen">
+    <div class="section-label">週間学習時間（月〜日）</div>
+    <div class="card">
+      <div class="week-label">今週の日別学習時間</div>
+      <div class="chart-area" style="height:180px;">
+        <canvas id="lineChart" role="img" aria-label="週間学習時間の折れ線グラフ">月曜から日曜までの学習時間推移</canvas>
+      </div>
+    </div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+      <div>
+        <div class="section-label">科目別 進捗率</div>
+        <div class="card" style="padding:0.75rem 1rem;">
+          <div class="chart-area" style="height:160px;">
+            <canvas id="pieChart" role="img" aria-label="科目別学習時間の円グラフ">各科目の学習時間比率</canvas>
+          </div>
+          <div id="pie-legend" style="display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;"></div>
+        </div>
+      </div>
+      <div>
+        <div class="section-label">目標達成状況</div>
+        <div id="goal-bars"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Act -->
+  <div id="screen-act" class="screen">
+    <div class="section-label">分析メモ</div>
+    <div class="card">
+      <div class="form-row">
+        <label class="form-label">今週できなかった理由・改善点（200文字以内）</label>
+        <textarea id="act-memo" maxlength="200" placeholder="例：スマホを触りすぎた。次週は22時にアプリを通知でブロックする。"></textarea>
+        <div style="text-align:right; font-size:11px; color:var(--color-text-tertiary); margin-top:4px;" id="memo-count">0 / 200</div>
+      </div>
+      <button class="btn btn-primary" onclick="saveMemo()" style="width:100%;">保存</button>
+    </div>
+    <div class="section-label">ToDo</div>
+    <div class="card">
+      <div id="todo-list"></div>
+      <div style="display:flex; gap:8px; margin-top:12px;">
+        <input type="text" id="todo-input" placeholder="やること..." style="flex:1; padding:7px 10px; font-size:13px; border:0.5px solid var(--color-border-secondary); border-radius:var(--border-radius-md); background:var(--color-background-primary); color:var(--color-text-primary);" />
+        <button class="btn btn-sm" onclick="addTodo()">追加</button>
+      </div>
+    </div>
+    <div class="section-label">教科書メモ</div>
+    <div id="notes-list"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const COLORS = ['#378ADD','#639922','#D85A30','#9E35BF','#0F6E56','#BA7517'];
+const DAYS = ['月','火','水','木','金','土','日'];
+
+let state = {
+  subjects: [
+    { id: 1, name: '数学', goalMin: 180, goalPages: 60, active: true },
+    { id: 2, name: '英語', goalMin: 120, goalPages: 40, active: true },
+    { id: 3, name: '物理', goalMin: 90, goalPages: 30, active: true },
+  ],
+  records: [
+    { id: 1, subjectId: 1, minutes: 45, pages: 12, day: 0 },
+    { id: 2, subjectId: 2, minutes: 30, pages: 8, day: 0 },
+    { id: 3, subjectId: 1, minutes: 60, pages: 18, day: 1 },
+    { id: 4, subjectId: 3, minutes: 40, pages: 10, day: 1 },
+    { id: 5, subjectId: 2, minutes: 50, pages: 14, day: 2 },
+    { id: 6, subjectId: 1, minutes: 35, pages: 9, day: 3 },
+    { id: 7, subjectId: 3, minutes: 30, pages: 8, day: 4 },
+  ],
+  todos: [
+    { id: 1, text: '数学の演習問題 p.45-50', done: false },
+    { id: 2, text: '英単語100個レビュー', done: true },
+  ],
+  memo: '',
+  notes: { 1: '因数分解の公式を再確認する', 2: '', 3: '' },
+  nextSubjectId: 4,
+  nextRecordId: 8,
+  nextTodoId: 3,
+  currentDay: 4,
+};
+
+let lineChartInst = null, pieChartInst = null;
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    t.classList.toggle('active', ['plan','do','check','act'][i] === tab);
+  });
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + tab).classList.add('active');
+  if (tab === 'check') renderCharts();
+  if (tab === 'do') renderDo();
+  if (tab === 'plan') renderPlan();
+  if (tab === 'act') renderAct();
+}
+
+function getSubjectColor(id) {
+  const idx = state.subjects.findIndex(s => s.id === id);
+  return COLORS[idx % COLORS.length];
+}
+
+function calcSubjectTotal(subjectId, field) {
+  return state.records.filter(r => r.subjectId === subjectId).reduce((s,r) => s + (r[field]||0), 0);
+}
+
+function renderPlan() {
+  const list = document.getElementById('subject-list');
+  const active = state.subjects.filter(s => s.active);
+  if (!active.length) { list.innerHTML = '<div style="font-size:13px;color:var(--color-text-secondary);padding:8px 0;">科目を追加してください</div>'; return; }
+  list.innerHTML = active.map(s => {
+    const doneMin = calcSubjectTotal(s.id, 'minutes');
+    const donePages = calcSubjectTotal(s.id, 'pages');
+    const pctMin = Math.min(100, Math.round(doneMin / s.goalMin * 100));
+    const pctPages = s.goalPages ? Math.min(100, Math.round(donePages / s.goalPages * 100)) : 0;
+    const col = getSubjectColor(s.id);
+    const badge = pctMin >= 100 ? 'badge-success' : pctMin >= 50 ? 'badge-info' : 'badge-warn';
+    const badgeText = pctMin >= 100 ? '達成' : pctMin + '%';
+    return `<div class="subject-row">
+      <div class="subject-dot" style="background:${col}"></div>
+      <div style="flex:1">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <span class="subject-name">${s.name}</span>
+          <span class="badge ${badge}">${badgeText}</span>
+        </div>
+        <div style="font-size:11px;color:var(--color-text-tertiary);margin-bottom:4px;">${doneMin}分 / 目標${s.goalMin}分　|　${donePages}p / 目標${s.goalPages}p</div>
+        <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${pctMin}%;background:${col}"></div></div>
+      </div>
+      <button class="btn btn-sm" onclick="removeSubject(${s.id})" style="flex-shrink:0;color:var(--color-text-tertiary);border-color:var(--color-border-tertiary);">削除</button>
+    </div>`;
+  }).join('');
+}
+
+function addSubject() {
+  const name = document.getElementById('new-subject').value.trim();
+  const min = parseInt(document.getElementById('new-minutes').value);
+  const pages = parseInt(document.getElementById('new-pages').value);
+  if (!name || isNaN(min) || min < 1) { showToast('科目名と目標時間を入力してください'); return; }
+  state.subjects.push({ id: state.nextSubjectId++, name, goalMin: min, goalPages: pages||0, active: true });
+  document.getElementById('new-subject').value = '';
+  document.getElementById('new-minutes').value = '';
+  document.getElementById('new-pages').value = '';
+  renderPlan();
+  updateHeader();
+  showToast('科目を追加しました');
+}
+
+function removeSubject(id) {
+  const s = state.subjects.find(s => s.id === id);
+  if (s) s.active = false;
+  renderPlan();
+  updateHeader();
+  showToast('科目を非表示にしました（記録は保持されます）');
+}
+
+function renderDo() {
+  const sel = document.getElementById('rec-subject');
+  const active = state.subjects.filter(s => s.active);
+  sel.innerHTML = active.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+  const totalMin = state.records.reduce((s,r) => s+r.minutes, 0);
+  const totalPages = state.records.reduce((s,r) => s+r.pages, 0);
+  document.getElementById('total-minutes-disp').innerHTML = totalMin + '<span class="stat-unit">分</span>';
+  document.getElementById('total-pages-disp').innerHTML = totalPages + '<span class="stat-unit">p</span>';
+  const list = document.getElementById('record-list');
+  if (!state.records.length) { list.innerHTML = 'まだ記録がありません'; return; }
+  const sorted = [...state.records].reverse();
+  list.innerHTML = sorted.map(r => {
+    const s = state.subjects.find(s => s.id === r.subjectId);
+    const col = getSubjectColor(r.subjectId);
+    return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:0.5px solid var(--color-border-tertiary);">
+      <div style="width:8px;height:8px;border-radius:50%;background:${col};flex-shrink:0"></div>
+      <span style="font-size:13px;font-weight:500;color:var(--color-text-primary);flex:1">${s ? s.name : '?'}</span>
+      <span style="font-size:12px;color:var(--color-text-secondary);">${DAYS[r.day]}曜</span>
+      <span style="font-size:12px;color:var(--color-text-secondary);">${r.minutes}分</span>
+      <span style="font-size:12px;color:var(--color-text-secondary);">${r.pages}p</span>
+      <button onclick="deleteRecord(${r.id})" style="font-size:11px;color:var(--color-text-tertiary);background:none;border:none;cursor:pointer;">×</button>
+    </div>`;
+  }).join('');
+}
+
+function addRecord() {
+  const subjectId = parseInt(document.getElementById('rec-subject').value);
+  const minutes = parseInt(document.getElementById('rec-minutes').value);
+  const pages = parseInt(document.getElementById('rec-pages').value) || 0;
+  if (isNaN(minutes) || minutes < 1) { showToast('時間を入力してください'); return; }
+  const dayTotal = state.records.filter(r => r.day === state.currentDay && r.subjectId === subjectId).reduce((s,r) => s+r.minutes, 0);
+  if (dayTotal + minutes > 1440) { showToast('1日の合計が1440分を超えます'); return; }
+  state.records.push({ id: state.nextRecordId++, subjectId, minutes, pages, day: state.currentDay });
+  document.getElementById('rec-minutes').value = '';
+  document.getElementById('rec-pages').value = '';
+  renderDo();
+  updateHeader();
+  showToast('記録を保存しました');
+}
+
+function deleteRecord(id) {
+  state.records = state.records.filter(r => r.id !== id);
+  renderDo();
+  updateHeader();
+  showToast('記録を削除しました');
+}
+
+function updateHeader() {
+  const active = state.subjects.filter(s => s.active);
+  const totalGoalMin = active.reduce((s,sub) => s+sub.goalMin, 0);
+  const totalDoneMin = state.records.reduce((s,r) => s+r.minutes, 0);
+  const pct = totalGoalMin > 0 ? Math.min(100, Math.round(totalDoneMin/totalGoalMin*100)) : 0;
+  document.querySelector('.badge-info').textContent = '今週の進捗 ' + pct + '%';
+}
+
+function renderCharts() {
+  const dayTotals = DAYS.map((_, i) => state.records.filter(r => r.day === i).reduce((s,r) => s+r.minutes, 0));
+  if (lineChartInst) lineChartInst.destroy();
+  lineChartInst = new Chart(document.getElementById('lineChart'), {
+    type: 'line',
+    data: {
+      labels: DAYS,
+      datasets: [{
+        label: '学習時間（分）', data: dayTotals,
+        borderColor: '#378ADD', backgroundColor: 'rgba(55,138,221,0.1)',
+        borderWidth: 2, pointRadius: 4, pointBackgroundColor: '#378ADD', fill: true, tension: 0.35
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 12 } } },
+        y: { grid: { color: 'rgba(128,128,128,0.12)' }, ticks: { font: { size: 11 } }, beginAtZero: true }
+      }
+    }
+  });
+
+  const active = state.subjects.filter(s => s.active);
+  const subjectTotals = active.map(s => calcSubjectTotal(s.id, 'minutes'));
+  const pieColors = active.map((s,i) => COLORS[i % COLORS.length]);
+  if (pieChartInst) pieChartInst.destroy();
+  pieChartInst = new Chart(document.getElementById('pieChart'), {
+    type: 'doughnut',
+    data: {
+      labels: active.map(s => s.name),
+      datasets: [{ data: subjectTotals, backgroundColor: pieColors, borderWidth: 0, hoverOffset: 4 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '60%',
+      plugins: { legend: { display: false } }
+    }
+  });
+
+  const total = subjectTotals.reduce((a,b) => a+b, 0);
+  document.getElementById('pie-legend').innerHTML = active.map((s,i) => {
+    const pct = total > 0 ? Math.round(subjectTotals[i]/total*100) : 0;
+    return `<span style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--color-text-secondary);">
+      <span style="width:10px;height:10px;border-radius:2px;background:${pieColors[i]};display:inline-block;"></span>${s.name} ${pct}%</span>`;
+  }).join('');
+
+  const goalBars = document.getElementById('goal-bars');
+  goalBars.innerHTML = active.map(s => {
+    const done = calcSubjectTotal(s.id, 'minutes');
+    const pct = Math.min(100, Math.round(done / s.goalMin * 100));
+    const col = pct >= 100 ? '#639922' : pct >= 50 ? '#378ADD' : '#BA7517';
+    const badgeClass = pct >= 100 ? 'badge-success' : pct >= 50 ? 'badge-info' : 'badge-warn';
+    return `<div class="card" style="padding:10px 12px;margin-bottom:8px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <span style="font-size:13px;font-weight:500;color:var(--color-text-primary);">${s.name}</span>
+        <span class="badge ${badgeClass}">${pct}%</span>
+      </div>
+      <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${pct}%;background:${col}"></div></div>
+      <div style="font-size:11px;color:var(--color-text-tertiary);margin-top:4px;">${done} / ${s.goalMin}分</div>
+    </div>`;
+  }).join('');
+}
+
+function renderAct() {
+  document.getElementById('act-memo').value = state.memo;
+  document.getElementById('memo-count').textContent = state.memo.length + ' / 200';
+  renderTodos();
+  renderNotes();
+}
+
+document.getElementById('act-memo').addEventListener('input', function() {
+  document.getElementById('memo-count').textContent = this.value.length + ' / 200';
+});
+
+function saveMemo() {
+  state.memo = document.getElementById('act-memo').value;
+  showToast('メモを保存しました');
+}
+
+function renderTodos() {
+  const list = document.getElementById('todo-list');
+  if (!state.todos.length) { list.innerHTML = '<div style="font-size:13px;color:var(--color-text-tertiary);padding:8px 0;">ToDoがありません</div>'; return; }
+  list.innerHTML = state.todos.map(t => `
+    <div class="todo-item">
+      <div class="todo-check ${t.done ? 'done' : ''}" onclick="toggleTodo(${t.id})">
+        ${t.done ? '<svg width="10" height="8" viewBox="0 0 10 8"><path d="M1 4l3 3 5-6" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>' : ''}
+      </div>
+      <span class="todo-text ${t.done ? 'done' : ''}">${t.text}</span>
+      <span class="todo-del" onclick="deleteTodo(${t.id})">削除</span>
+    </div>`).join('');
+}
+
+function toggleTodo(id) { const t = state.todos.find(t => t.id === id); if (t) t.done = !t.done; renderTodos(); }
+function deleteTodo(id) { state.todos = state.todos.filter(t => t.id !== id); renderTodos(); }
+function addTodo() {
+  const inp = document.getElementById('todo-input');
+  const text = inp.value.trim();
+  if (!text) return;
+  state.todos.push({ id: state.nextTodoId++, text, done: false });
+  inp.value = '';
+  renderTodos();
+}
+
+function renderNotes() {
+  const active = state.subjects.filter(s => s.active);
+  document.getElementById('notes-list').innerHTML = active.map(s => {
+    const note = state.notes[s.id] || '';
+    return `<div class="card" style="margin-bottom:8px;">
+      <div style="font-size:13px;font-weight:500;color:var(--color-text-primary);margin-bottom:8px;">${s.name}</div>
+      <textarea style="width:100%;font-size:13px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);padding:7px 10px;background:var(--color-background-primary);color:var(--color-text-primary);resize:vertical;min-height:60px;line-height:1.5;" placeholder="メモ..." oninput="state.notes[${s.id}]=this.value">${note}</textarea>
+    </div>`;
+  }).join('');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+renderPlan();
+updateHeader();
+</script>
