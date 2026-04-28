@@ -1,2 +1,2 @@
-# SLM_System
-勉強記録管理システム(Study Log Management System)
+# SelfTrack
+自身(Self)で学習の記録を追跡(Track)できるアプリケーション
