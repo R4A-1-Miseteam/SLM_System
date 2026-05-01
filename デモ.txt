@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SelfTrack</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap');
+
+:root {
+  --bg:#f5f5f0;--surface:#fff;--surface2:#f0f0ea;--border:#e2e2da;
+  --accent:#059669;--accent2:#4f46e5;--accent3:#db2777;--warn:#d97706;
+  --text:#1a1a1a;--text2:#52525b;--text3:#a1a1aa;
+  --radius:10px;--font-mono:'DM Mono',monospace;--font:'Zen Kaku Gothic New',sans-serif;
+}
+[data-theme=dark]{
+  --bg:#0f0f13;--surface:#16161d;--surface2:#1e1e28;--border:#2a2a38;
+  --accent:#6ee7b7;--accent2:#818cf8;--accent3:#f472b6;--warn:#fbbf24;
+  --text:#e2e8f0;--text2:#94a3b8;--text3:#475569;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;overflow-x:hidden}
+#app{display:flex;flex-direction:column;height:100vh}
+
+/* header */
+header{display:flex;align-items:center;gap:10px;padding:0 20px;height:52px;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;flex-shrink:0}
+.logo{font-family:var(--font-mono);font-size:14px;font-weight:500;color:var(--accent);letter-spacing:.05em}
+nav{display:flex;gap:2px;margin-left:auto}
+nav button{padding:6px 14px;border-radius:6px;border:none;background:transparent;color:var(--text2);font:13px var(--font);cursor:pointer;transition:all .15s}
+nav button:hover{background:var(--surface2);color:var(--text)}
+nav button.active{background:var(--surface2);color:var(--accent)}
+.theme-btn{padding:6px 10px;font-size:14px;margin-right:6px}
+
+main{flex:1;overflow-y:auto;padding:20px 24px}
+.page{display:none}.page.active{display:block}
+
+/* grid */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+.wide{grid-column:1/-1}
+
+/* card */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:14px}
+.card-title{font-size:11px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+
+/* subject card */
+.sub-item{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:8px}
+.sub-header{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.sub-name{font-size:14px;font-weight:500;flex:1}
+.sub-pct{font-family:var(--font-mono);font-size:13px;color:var(--accent);font-weight:500}
+.pbar{height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin-bottom:6px}
+.pfill{height:100%;border-radius:2px;transition:width .4s}
+.sub-stats{display:flex;gap:14px;font-size:11px;color:var(--text2);font-family:var(--font-mono)}
+
+/* today reminder */
+.today-pill{display:inline-flex;align-items:center;gap:6px;background:var(--accent2);color:#fff;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:500;margin-right:4px;margin-bottom:4px}
+[data-theme=dark] .today-pill{color:#e0e7ff}
+
+/* chart */
+.chart-wrap{position:relative;height:200px}
+.tab-row{display:flex;gap:4px;margin-bottom:12px}
+.tab{padding:4px 12px;border-radius:5px;border:1px solid var(--border);background:transparent;font:12px var(--font);color:var(--text2);cursor:pointer;transition:all .15s}
+.tab.active{background:var(--accent2);color:#fff;border-color:var(--accent2)}
+
+/* forms */
+.form-row{display:flex;gap:10px;margin-bottom:10px}
+.fg{flex:1;display:flex;flex-direction:column;gap:5px}
+label{font-size:12px;color:var(--text2)}
+input[type=text],input[type=number],input[type=date],select,textarea{
+  background:var(--surface2);border:1px solid var(--border);border-radius:6px;
+  color:var(--text);font:13px var(--font);padding:7px 11px;width:100%;outline:none;transition:border-color .15s}
+input:focus,select:focus,textarea:focus{border-color:var(--accent2)}
+textarea{resize:vertical;min-height:56px}
+.btn{border:none;border-radius:6px;cursor:pointer;font:13px var(--font);font-weight:500;padding:7px 15px;transition:all .15s}
+.btn-p{background:var(--accent);color:#fff}.btn-p:hover{opacity:.85}
+[data-theme=dark] .btn-p{color:#0f1a14}
+.btn-s{background:var(--surface2);color:var(--text);border:1px solid var(--border)}.btn-s:hover{border-color:var(--text2)}
+.btn-d{background:transparent;color:#ef4444;border:1px solid #ef444440}.btn-d:hover{background:#ef444415}
+.btn-sm{padding:4px 10px;font-size:12px}
+.btn-row{display:flex;gap:8px;justify-content:flex-end;margin-top:10px}
+
+/* pomodoro */
+.pomo-wrap{text-align:center;padding:8px 0}
+.pomo-ring{width:130px;height:130px;margin:0 auto 14px;position:relative}
+.pomo-ring svg{transform:rotate(-90deg)}
+.pring-bg{stroke:var(--border);fill:none}
+.pring-fg{fill:none;stroke:var(--accent);stroke-linecap:round;transition:stroke-dashoffset 1s linear}
+.pomo-inner{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:24px;font-weight:500;color:var(--accent)}
+.pomo-state{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:14px}
+.pomo-btns{display:flex;gap:6px;justify-content:center}
+.pomo-subject-sel{margin-bottom:12px}
+
+/* todo */
+.todo-item{display:flex;align-items:center;gap:8px;padding:9px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;margin-bottom:5px;transition:opacity .2s}
+.todo-item.done{opacity:.4}
+.todo-item.done .todo-text{text-decoration:line-through;color:var(--text3)}
+.chk{width:16px;height:16px;border-radius:4px;border:1.5px solid var(--border);background:transparent;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;transition:all .15s}
+.todo-item.done .chk{background:var(--accent);border-color:var(--accent);color:#fff}
+.todo-text{flex:1;font-size:13px}
+.todo-del{background:none;border:none;color:var(--text3);cursor:pointer;font-size:15px;line-height:1}
+.todo-del:hover{color:#ef4444}
+
+/* log list */
+.log-item{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;margin-bottom:5px;font-size:13px}
+.log-date{font-family:var(--font-mono);font-size:11px;color:var(--text3);min-width:76px}
+.log-sub{flex:1;font-weight:500}
+.log-st{font-family:var(--font-mono);font-size:11px;color:var(--accent)}
+.log-src{font-size:10px;padding:1px 6px;border-radius:3px;background:var(--border);color:var(--text3)}
+
+/* summary nums */
+.num-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.num-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center}
+.num-val{font-family:var(--font-mono);font-size:22px;font-weight:500;color:var(--accent)}
+.num-label{font-size:11px;color:var(--text3);margin-top:2px}
+
+/* colors */
+.colors{display:flex;gap:6px;margin-top:6px}
+.cpick{width:18px;height:18px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:border-color .1s}
+.cpick.sel{border-color:var(--text)}
+
+/* toast */
+#toast{position:fixed;bottom:18px;right:18px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:11px 15px;font-size:13px;color:var(--text);transform:translateY(60px);opacity:0;transition:all .22s;z-index:1000;max-width:300px;box-shadow:0 4px 16px #0002}
+#toast.show{transform:translateY(0);opacity:1}
+#toast.err{border-color:#ef4444;color:#ef4444}
+
+/* section header */
+.sh{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.st{font-size:16px;font-weight:700}
+.empty{color:var(--text3);font-size:13px;text-align:center;padding:20px}
+.badge{font-family:var(--font-mono);font-size:10px;padding:2px 6px;border-radius:3px;background:var(--surface2);color:var(--text3);border:1px solid var(--border)}
+
+/* ===== TIMER OVERLAY ===== */
+#timer-overlay{
+  display:none;position:fixed;inset:0;z-index:500;
+  background:var(--bg);
+  flex-direction:column;align-items:center;justify-content:center;
+}
+#timer-overlay.open{display:flex}
+.tov-top{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:16px 24px}
+.tov-logo{font-family:var(--font-mono);font-size:13px;color:var(--accent);letter-spacing:.05em}
+.tov-close{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px 14px;font:12px var(--font);color:var(--text2);cursor:pointer;transition:all .15s}
+.tov-close:hover{color:var(--text);border-color:var(--text2)}
+.tov-subject-name{font-size:20px;font-weight:700;color:var(--text);margin-bottom:28px;display:flex;align-items:center;gap:10px}
+.tov-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+.tov-ring-wrap{position:relative;margin-bottom:20px}
+.tov-ring-wrap svg{transform:rotate(-90deg);display:block}
+.tov-ring-bg{stroke:var(--border);fill:none}
+.tov-ring-fg{fill:none;stroke:var(--accent);stroke-linecap:round;transition:stroke-dashoffset 1s linear}
+.tov-time{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:72px;font-weight:500;color:var(--accent);letter-spacing:-.04em}
+.tov-elapsed{font-family:var(--font-mono);font-size:13px;color:var(--text3);margin-bottom:28px;letter-spacing:.04em}
+.tov-state{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:18px}
+.tov-btns{display:flex;gap:12px;margin-bottom:12px}
+.tov-btn-end{background:#ef4444;color:#fff;border:none;border-radius:10px;padding:14px 36px;font:15px var(--font);font-weight:700;cursor:pointer;transition:opacity .15s}
+.tov-btn-end:hover{opacity:.85}
+.tov-btn-mid{background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:14px 24px;font:14px var(--font);font-weight:500;cursor:pointer;transition:all .15s}
+.tov-btn-mid:hover{border-color:var(--text2)}
+.tov-sel-wrap{margin-bottom:28px;display:flex;flex-direction:column;align-items:center;gap:8px}
+.tov-sel-label{font-size:11px;color:var(--text3);letter-spacing:.08em;text-transform:uppercase}
+.tov-sel{background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font:15px var(--font);padding:10px 20px;outline:none;cursor:pointer;min-width:200px}
+.tov-sel:focus{border-color:var(--accent2)}
+/* print */
+@media print{header,nav,#toast,.no-print,#timer-overlay{display:none!important}.page{display:block!important}}
+</style>
+</head>
+<body>
+<div id="app">
+<header>
+  <span class="logo">▸ SelfTrack</span>
+  <nav>
+    <button id="theme-btn" class="theme-btn" onclick="toggleTheme()">☀️</button>
+    <button class="active" onclick="nav('dashboard',this)">ダッシュボード</button>
+    <button onclick="nav('goal',this)">目標設定</button>
+    <button onclick="nav('log',this)">実績入力</button>
+    <button onclick="nav('todo',this)">ToDo</button>
+    <button onclick="nav('backup',this)">データ管理</button>
+  </nav>
+</header>
+<main>
+
+<!-- ===== DASHBOARD ===== -->
+<div id="page-dashboard" class="page active">
+  <div class="sh">
+    <span class="st">ダッシュボード</span>
+    <span id="today-label" style="font-size:12px;color:var(--text3);font-family:var(--font-mono)"></span>
+  </div>
+
+  <!-- 今日のリマインド -->
+  <div class="card" id="today-remind-card">
+    <div class="card-title">📅 今日の学習予定</div>
+    <div id="today-remind"></div>
+  </div>
+
+  <div class="grid2">
+    <!-- 科目別達成率 -->
+    <div class="card">
+      <div class="card-title">科目別達成率（今週）</div>
+      <div id="sub-progress"></div>
+    </div>
+    <!-- タイマーランチャー -->
+    <div class="card" style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;min-height:220px">
+      <div class="card-title" style="justify-content:center">🍅 集中タイマー</div>
+      <div id="dash-timer-status" style="font-family:var(--font-mono);font-size:36px;font-weight:500;color:var(--accent);margin-bottom:8px">25:00</div>
+      <div id="dash-timer-state" style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:20px">待機中</div>
+      <button class="btn btn-p" onclick="overlayOpen()" style="padding:10px 28px;font-size:14px">タイマーを開く ↗</button>
+      <div style="font-size:11px;color:var(--text3);margin-top:10px">開くと画面全体に展開します</div>
+    </div>
+  </div>
+
+  <!-- グラフ -->
+  <div class="card wide">
+    <div class="card-title">
+      進捗グラフ
+      <div class="tab-row" style="margin-bottom:0;margin-left:auto">
+        <button class="tab active" onclick="switchChart('day',this)">日</button>
+        <button class="tab" onclick="switchChart('week',this)">週</button>
+        <button class="tab" onclick="switchChart('month',this)">月</button>
+      </div>
+    </div>
+    <div class="chart-wrap"><canvas id="main-chart"></canvas></div>
+  </div>
+
+  <!-- サマリー -->
+  <div class="card wide">
+    <div class="card-title">今週のサマリー</div>
+    <div class="num-grid" id="summary-nums"></div>
+  </div>
+</div>
+
+<!-- ===== GOAL ===== -->
+<div id="page-goal" class="page">
+  <div class="sh"><span class="st">科目・目標設定</span></div>
+  <div class="card">
+    <div class="card-title">科目を追加</div>
+    <div class="form-row">
+      <div class="fg"><label>科目名</label><input type="text" id="g-name" placeholder="例：英語"></div>
+      <div class="fg"><label>週次目標（分）</label><input type="number" id="g-time" placeholder="300" min="1"></div>
+      <div class="fg"><label>週次目標（ページ）</label><input type="number" id="g-page" placeholder="50" min="0"></div>
+    </div>
+    <div>
+      <label>今日の予定に含める</label>
+      <div style="margin-top:6px;display:flex;align-items:center;gap:8px">
+        <input type="checkbox" id="g-today" style="width:auto">
+        <span style="font-size:12px;color:var(--text2)">ダッシュボードにリマインド表示</span>
+      </div>
+    </div>
+    <div style="margin-top:10px"><label>カラー</label>
+      <div class="colors" id="cpicker">
+        <div class="cpick sel" style="background:#059669" data-c="#059669" onclick="pickC(this)"></div>
+        <div class="cpick" style="background:#4f46e5" data-c="#4f46e5" onclick="pickC(this)"></div>
+        <div class="cpick" style="background:#db2777" data-c="#db2777" onclick="pickC(this)"></div>
+        <div class="cpick" style="background:#d97706" data-c="#d97706" onclick="pickC(this)"></div>
+        <div class="cpick" style="background:#0891b2" data-c="#0891b2" onclick="pickC(this)"></div>
+        <div class="cpick" style="background:#7c3aed" data-c="#7c3aed" onclick="pickC(this)"></div>
+      </div>
+    </div>
+    <div class="btn-row"><button class="btn btn-p" onclick="addSubject()">追加</button></div>
+  </div>
+  <div class="card">
+    <div class="card-title">登録済み科目</div>
+    <div id="sub-manage"></div>
+  </div>
+</div>
+
+<!-- ===== LOG ===== -->
+<div id="page-log" class="page">
+  <div class="sh"><span class="st">学習実績を記録</span></div>
+  <div class="card">
+    <div class="card-title">手動入力</div>
+    <div class="form-row">
+      <div class="fg"><label>科目</label><select id="l-sub"></select></div>
+      <div class="fg"><label>日付</label><input type="date" id="l-date"></div>
+    </div>
+    <div class="form-row">
+      <div class="fg"><label>実施時間（分）0〜1440</label><input type="number" id="l-time" placeholder="60" min="0" max="1440"></div>
+      <div class="fg"><label>完了ページ数</label><input type="number" id="l-page" placeholder="10" min="0"></div>
+    </div>
+    <div class="fg" style="margin-bottom:10px"><label>振り返りメモ</label><textarea id="l-memo" placeholder="今日の感想・気づきなど"></textarea></div>
+    <div class="btn-row"><button class="btn btn-p" onclick="saveLog()">保存</button></div>
+  </div>
+  <div class="card">
+    <div class="card-title">今週の実績</div>
+    <div id="log-list"></div>
+  </div>
+</div>
+
+<!-- ===== TODO ===== -->
+<div id="page-todo" class="page">
+  <div class="sh"><span class="st">ToDoリスト</span></div>
+  <div class="card">
+    <div class="card-title">タスクを追加</div>
+    <div class="form-row">
+      <div class="fg"><input type="text" id="new-todo" placeholder="例：英単語100個暗記" onkeydown="if(event.key==='Enter')addTodo()"></div>
+      <div><button class="btn btn-p" onclick="addTodo()">追加</button></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">未完了 <span id="todo-count" class="badge"></span></div>
+    <div id="todo-list"></div>
+  </div>
+</div>
+
+<!-- ===== BACKUP ===== -->
+<div id="page-backup" class="page">
+  <div class="sh"><span class="st">データ管理</span></div>
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title">JSONエクスポート</div>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:14px">全データをJSONファイルとして保存します。端末移行時に使用してください。</p>
+      <button class="btn btn-p" onclick="exportJSON()">エクスポート</button>
+    </div>
+    <div class="card">
+      <div class="card-title">JSONインポート</div>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:14px">エクスポートしたJSONを読み込みます。現在のデータは上書きされます。</p>
+      <button class="btn btn-s" onclick="document.getElementById('imp-file').click()">ファイルを選択</button>
+      <input type="file" id="imp-file" accept=".json" style="display:none" onchange="importJSON(this)">
+    </div>
+    <div class="card">
+      <div class="card-title">PDF出力（印刷）</div>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:14px">ブラウザの印刷機能を使用してPDFとして保存できます。</p>
+      <button class="btn btn-s" onclick="window.print()">印刷 / PDF保存</button>
+    </div>
+    <div class="card">
+      <div class="card-title">データ状況</div>
+      <div id="data-status" style="font-family:var(--font-mono);font-size:12px;color:var(--text2);line-height:2.2"></div>
+    </div>
+  </div>
+</div>
+
+</main>
+</div>
+
+<!-- ===== TIMER OVERLAY ===== -->
+<div id="timer-overlay">
+  <div class="tov-top">
+    <span class="tov-logo">▸ SelfTrack — 集中タイマー</span>
+    <button class="tov-close" onclick="overlayClose()">縮小 ↙</button>
+  </div>
+
+  <!-- 科目選択（IDLE時のみ表示） -->
+  <div id="tov-sel-area" class="tov-sel-wrap">
+    <div class="tov-sel-label">勉強する科目を選択</div>
+    <select id="tov-subject" class="tov-sel"></select>
+  </div>
+
+  <!-- 科目名表示（RUNNING/PAUSED時） -->
+  <div id="tov-subject-display" class="tov-subject-name" style="display:none">
+    <div id="tov-sdot" class="tov-dot"></div>
+    <span id="tov-sname"></span>
+  </div>
+
+  <!-- リング -->
+  <div class="tov-ring-wrap">
+    <svg id="tov-svg" width="240" height="240">
+      <circle class="tov-ring-bg" cx="120" cy="120" r="108" stroke-width="8"/>
+      <circle id="tov-ring-fg" class="tov-ring-fg" cx="120" cy="120" r="108" stroke-width="8"
+        stroke-dasharray="678.6" stroke-dashoffset="0"/>
+    </svg>
+    <div class="tov-time" id="tov-display">25:00</div>
+  </div>
+
+  <div class="tov-elapsed" id="tov-elapsed">経過 0分</div>
+  <div class="tov-state" id="tov-state">科目を選んで開始してください</div>
+
+  <div class="tov-btns">
+    <button class="tov-btn-end" id="tov-end" onclick="timerEnd()">勉強終了</button>
+    <button class="tov-btn-mid" id="tov-start-btn" onclick="timerStart()">▶ 開始</button>
+    <button class="tov-btn-mid" id="tov-pause-btn" onclick="timerPause()" style="display:none">⏸ 一時停止</button>
+    <button class="tov-btn-mid" id="tov-resume-btn" onclick="timerResume()" style="display:none">▶ 再開</button>
+  </div>
+  <div style="font-size:11px;color:var(--text3)">「勉強終了」を押すと経過時間が実績入力に反映されます</div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ========== DATA ==========
+const KEY = 'selftrack_data';
+
+function initDB() {
+  return { version:'1.1', lastUpdated: new Date().toISOString(), subjects:[], logs:[], todos:[] };
+}
+function load() {
+  try { const r = localStorage.getItem(KEY); return r ? JSON.parse(r) : initDB(); } catch { return initDB(); }
+}
+function save(d) {
+  d.lastUpdated = new Date().toISOString();
+  localStorage.setItem(KEY, JSON.stringify(d));
+}
+function validate(d) {
+  return d && typeof d==='object' && d.version && Array.isArray(d.subjects) && Array.isArray(d.logs) && Array.isArray(d.todos);
+}
+function uid() { return crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)+Date.now().toString(36); }
+
+let db = load();
+
+// ========== THEME ==========
+function toggleTheme() {
+  const dark = document.documentElement.getAttribute('data-theme')==='dark';
+  document.documentElement.setAttribute('data-theme', dark?'':'dark');
+  document.getElementById('theme-btn').textContent = dark?'☀️':'🌙';
+  localStorage.setItem('st_theme', dark?'light':'dark');
+  renderChart(curChartMode);
+}
+(function(){
+  const t = localStorage.getItem('st_theme');
+  if(t==='dark'){ document.documentElement.setAttribute('data-theme','dark'); document.getElementById('theme-btn').textContent='🌙'; }
+})();
+
+// ========== NAV ==========
+function nav(name, btn) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('nav button:not(.theme-btn)').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  if(btn) btn.classList.add('active');
+  const renders = { dashboard:renderDashboard, goal:renderGoalPage, log:renderLogPage, todo:renderTodo, backup:renderBackup };
+  renders[name]?.();
+}
+
+// ========== TOAST ==========
+let _tt;
+function toast(msg, err=false) {
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.className='show'+(err?' err':'');
+  clearTimeout(_tt); _tt=setTimeout(()=>el.className='', 2600);
+}
+
+// ========== COLOR ==========
+let selColor='#059669';
+function pickC(el) {
+  document.querySelectorAll('.cpick').forEach(e=>e.classList.remove('sel'));
+  el.classList.add('sel'); selColor=el.dataset.c;
+}
+
+// ========== DATE UTILS ==========
+function today() { return new Date().toISOString().slice(0,10); }
+function getWeek(offset=0) {
+  const now=new Date(); now.setDate(now.getDate()+offset*7);
+  const d=now.getDay(); const mon=new Date(now); mon.setDate(now.getDate()-(d===0?6:d-1));
+  const days=[]; for(let i=0;i<7;i++){const x=new Date(mon);x.setDate(mon.getDate()+i);days.push(x.toISOString().slice(0,10));}
+  return days;
+}
+function getMonthDays() {
+  const now=new Date(); const y=now.getFullYear(); const m=now.getMonth();
+  const last=new Date(y,m+1,0).getDate();
+  const days=[]; for(let i=1;i<=last;i++) days.push(`${y}-${String(m+1).padStart(2,'0')}-${String(i).padStart(2,'0')}`);
+  return days;
+}
+
+// ========== SUBJECTS ==========
+function addSubject() {
+  const name=document.getElementById('g-name').value.trim();
+  const time=parseInt(document.getElementById('g-time').value)||0;
+  const page=parseInt(document.getElementById('g-page').value)||0;
+  const todayFlag=document.getElementById('g-today').checked;
+  if(!name) return toast('科目名を入力してください',true);
+  if(time<1) return toast('目標時間を入力してください',true);
+  if(db.subjects.find(s=>s.title===name)) return toast('その科目名はすでに登録されています',true);
+  db.subjects.push({id:uid(),title:name,targetTime:time,targetPage:page,color:selColor,todayFlag,createdAt:new Date().toISOString()});
+  save(db); toast('科目を追加しました');
+  document.getElementById('g-name').value='';
+  document.getElementById('g-time').value='';
+  document.getElementById('g-page').value='';
+  document.getElementById('g-today').checked=false;
+  renderGoalPage();
+}
+function deleteSubject(id) {
+  if(!confirm('この科目と関連する実績をすべて削除しますか？')) return;
+  db.subjects=db.subjects.filter(s=>s.id!==id);
+  db.logs=db.logs.filter(l=>l.subjectId!==id);
+  save(db); renderGoalPage(); toast('削除しました');
+}
+function toggleTodayFlag(id) {
+  const s=db.subjects.find(s=>s.id===id);
+  if(s){ s.todayFlag=!s.todayFlag; save(db); renderGoalPage(); }
+}
+function renderGoalPage() {
+  const el=document.getElementById('sub-manage');
+  if(!db.subjects.length){el.innerHTML='<div class="empty">科目が登録されていません</div>';return;}
+  el.innerHTML=db.subjects.map(s=>`
+    <div class="sub-item">
+      <div class="sub-header">
+        <div class="dot" style="background:${s.color}"></div>
+        <span class="sub-name">${s.title}</span>
+        <span style="font-size:11px;color:var(--text3);font-family:var(--font-mono)">目標 ${s.targetTime}分${s.targetPage?` / ${s.targetPage}頁`:''}</span>
+        <button class="btn btn-s btn-sm" onclick="toggleTodayFlag('${s.id}')" style="font-size:11px">${s.todayFlag?'📅 今日あり':'📅 今日なし'}</button>
+        <button class="btn btn-d btn-sm" onclick="deleteSubject('${s.id}')">削除</button>
+      </div>
+    </div>`).join('');
+}
+
+// ========== ACHIEVEMENT ==========
+function calcWeek(subject) {
+  const days=getWeek();
+  const logs=db.logs.filter(l=>l.subjectId===subject.id && days.includes(l.date));
+  const totalTime=logs.reduce((a,l)=>a+l.duration,0);
+  const totalPage=logs.reduce((a,l)=>a+l.pageCount,0);
+  const pctT=subject.targetTime?Math.min(100,Math.round(totalTime/subject.targetTime*100)):0;
+  const pctP=subject.targetPage?Math.min(100,Math.round(totalPage/subject.targetPage*100)):0;
+  const pct=subject.targetPage?Math.round((pctT+pctP)/2):pctT;
+  return {totalTime,totalPage,pctT,pctP,pct};
+}
+
+// ========== DASHBOARD ==========
+let chartInst=null; let curChartMode='week';
+
+function renderDashboard() {
+  document.getElementById('today-label').textContent=today();
+
+  // today remind
+  const todaySubs=db.subjects.filter(s=>s.todayFlag);
+  const remEl=document.getElementById('today-remind');
+  const card=document.getElementById('today-remind-card');
+  if(todaySubs.length){
+    card.style.display='';
+    remEl.innerHTML='<div style="display:flex;flex-wrap:wrap;gap:4px">'+
+      todaySubs.map(s=>`<span class="today-pill" style="background:${s.color}cc">${s.title}</span>`).join('')+
+      '</div><div style="font-size:12px;color:var(--text2);margin-top:8px">今日の学習予定が設定されています。頑張りましょう！</div>';
+  } else {
+    card.style.display='none';
+  }
+
+  // subject progress
+  const spEl=document.getElementById('sub-progress');
+  if(!db.subjects.length){spEl.innerHTML='<div class="empty">科目を登録してください</div>';}
+  else{
+    spEl.innerHTML=db.subjects.map(s=>{
+      const a=calcWeek(s);
+      return `<div class="sub-item">
+        <div class="sub-header">
+          <div class="dot" style="background:${s.color}"></div>
+          <span class="sub-name">${s.title}</span>
+          <span class="sub-pct">${a.pct}%</span>
+        </div>
+        <div class="pbar"><div class="pfill" style="width:${a.pct}%;background:${s.color}"></div></div>
+        <div class="sub-stats">
+          <span>⏱ ${a.totalTime}/${s.targetTime}分</span>
+          ${s.targetPage?`<span>📄 ${a.totalPage}/${s.targetPage}頁</span>`:''}
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  updateDashTimerBadge();
+
+  // summary
+  const days=getWeek();
+  const weekLogs=db.logs.filter(l=>days.includes(l.date));
+  const totalMin=weekLogs.reduce((a,l)=>a+l.duration,0);
+  const totalPage=weekLogs.reduce((a,l)=>a+l.pageCount,0);
+  const days_studied=new Set(weekLogs.map(l=>l.date)).size;
+  document.getElementById('summary-nums').innerHTML=`
+    <div class="num-card"><div class="num-val">${totalMin}</div><div class="num-label">今週の総学習時間（分）</div></div>
+    <div class="num-card"><div class="num-val">${totalPage}</div><div class="num-label">今週の総完了ページ</div></div>
+    <div class="num-card"><div class="num-val">${days_studied}/7</div><div class="num-label">学習日数</div></div>`;
+
+  renderChart(curChartMode);
+}
+
+function switchChart(mode, btn) {
+  curChartMode=mode;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  renderChart(mode);
+}
+
+function getCSS(v) { return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+
+function renderChart(mode) {
+  const canvas=document.getElementById('main-chart');
+  if(chartInst){ chartInst.destroy(); chartInst=null; }
+
+  let labels=[], dateKeys=[], title='';
+  if(mode==='day'){
+    const d=today();
+    labels=['0〜4時','4〜8時','8〜12時','12〜16時','16〜20時','20〜24時'];
+    dateKeys=labels; title='今日の時間帯別（分）';
+    // 今日のlogを集計（時間帯分割は簡易：duration を均等6分割で表示）
+    const todayLogs=db.logs.filter(l=>l.date===d);
+    const datasets=db.subjects.map(s=>{
+      const lg=todayLogs.find(l=>l.subjectId===s.id);
+      const v=lg?Math.round(lg.duration/6):0;
+      return {label:s.title,data:Array(6).fill(v),borderColor:s.color,backgroundColor:s.color+'33',borderWidth:2,tension:.3,fill:true,pointRadius:3};
+    });
+    buildChart(canvas,labels,datasets,title);
+  } else if(mode==='week'){
+    const days=getWeek();
+    labels=['月','火','水','木','金','土','日'];
+    const datasets=db.subjects.map(s=>({
+      label:s.title,
+      data:days.map(d=>{ const l=db.logs.find(x=>x.subjectId===s.id&&x.date===d); return l?l.duration:0; }),
+      borderColor:s.color,backgroundColor:s.color+'33',borderWidth:2,tension:.3,fill:true,pointRadius:4
+    }));
+    buildChart(canvas,labels,datasets,'今週の日別学習時間（分）');
+  } else {
+    const days=getMonthDays();
+    labels=days.map(d=>d.slice(8));
+    const datasets=db.subjects.map(s=>({
+      label:s.title,
+      data:days.map(d=>{ const l=db.logs.find(x=>x.subjectId===s.id&&x.date===d); return l?l.duration:0; }),
+      borderColor:s.color,backgroundColor:s.color+'22',borderWidth:1.5,tension:.3,fill:false,pointRadius:2
+    }));
+    buildChart(canvas,labels,datasets,'今月の日別学習時間（分）');
+  }
+}
+
+function buildChart(canvas, labels, datasets, title) {
+  const tc=getCSS('--text2'); const bc=getCSS('--border');
+  chartInst=new Chart(canvas,{
+    type:'line', data:{labels,datasets},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{labels:{color:tc,font:{size:11},boxWidth:12}},
+        title:{display:!!title,text:title,color:tc,font:{size:11},padding:{bottom:8}}
+      },
+      scales:{
+        x:{ticks:{color:getCSS('--text3'),font:{size:10}},grid:{color:bc}},
+        y:{ticks:{color:getCSS('--text3'),font:{size:10}},grid:{color:bc},beginAtZero:true}
+      }
+    }
+  });
+}
+
+// ========== LOG ==========
+function renderLogPage() {
+  const sel=document.getElementById('l-sub');
+  sel.innerHTML=db.subjects.length
+    ?db.subjects.map(s=>`<option value="${s.id}">${s.title}</option>`).join('')
+    :'<option value="">-- 先に科目を登録 --</option>';
+  document.getElementById('l-date').value=today();
+
+  const days=getWeek();
+  const wl=db.logs.filter(l=>days.includes(l.date)).sort((a,b)=>b.date.localeCompare(a.date));
+  const el=document.getElementById('log-list');
+  if(!wl.length){el.innerHTML='<div class="empty">今週の実績はまだありません</div>';return;}
+  el.innerHTML=wl.map(l=>{
+    const s=db.subjects.find(x=>x.id===l.subjectId);
+    return `<div class="log-item">
+      <div class="log-date">${l.date}</div>
+      <div class="dot" style="background:${s?s.color:'#888'}"></div>
+      <div class="log-sub">${s?s.title:'(削除済)'}</div>
+      <div class="log-st">${l.duration}分 / ${l.pageCount}頁</div>
+      <span class="log-src">${l.src==='timer'?'🍅タイマー':'✏️手動'}</span>
+    </div>`;
+  }).join('');
+}
+
+function saveLog(src='manual', subjectId=null, duration=null) {
+  const sid=subjectId||document.getElementById('l-sub').value;
+  const date=document.getElementById('l-date')?.value||today();
+  const dur=duration!==null?duration:parseInt(document.getElementById('l-time').value);
+  const page=parseInt(document.getElementById('l-page')?.value)||0;
+  const memo=document.getElementById('l-memo')?.value.trim()||'';
+
+  if(!sid) return toast('科目を選択してください',true);
+  if(isNaN(dur)||dur<0||dur>1440) return toast('時間は0〜1440分で入力してください',true);
+  if(page<0) return toast('ページ数は0以上で入力してください',true);
+
+  const idx=db.logs.findIndex(l=>l.subjectId===sid&&l.date===date);
+  const rec={id:idx>=0?db.logs[idx].id:uid(),subjectId:sid,date,duration:dur,pageCount:page,comment:memo,src,savedAt:new Date().toISOString()};
+  if(idx>=0) db.logs[idx]=rec; else db.logs.push(rec);
+  save(db);
+  if(src==='manual'){
+    document.getElementById('l-time').value='';
+    document.getElementById('l-page').value='';
+    document.getElementById('l-memo').value='';
+  }
+  toast(idx>=0?'実績を更新しました':'実績を保存しました');
+  renderLogPage();
+}
+
+// ========== TIMER OVERLAY ==========
+const POMO_TOTAL = 25 * 60;
+let timerState = 'IDLE'; // IDLE | RUNNING | PAUSED
+let timerSec = POMO_TOTAL;
+let timerElapsed = 0;    // 現セッションの経過秒（1ポモドーロ分）
+let timerAccum  = 0;    // ★ 累積経過秒（複数セッション合計・勉強終了まで保持）
+let timerInterval = null;
+let timerSubjectId = null;
+
+// ---------- overlay ----------
+function overlayOpen() {
+  const sel = document.getElementById('tov-subject');
+  sel.innerHTML = db.subjects.length
+    ? db.subjects.map(s=>`<option value="${s.id}">${s.title}</option>`).join('')
+    : '<option value="">-- 先に科目を登録してください --</option>';
+  // 科目は既に選択中なら維持
+  if(timerSubjectId){
+    for(let i=0;i<sel.options.length;i++){
+      if(sel.options[i].value===timerSubjectId){ sel.selectedIndex=i; break; }
+    }
+  }
+  document.getElementById('timer-overlay').classList.add('open');
+  updateTimerUI();
+}
+
+function overlayClose() {
+  document.getElementById('timer-overlay').classList.remove('open');
+  updateDashTimerBadge();
+}
+
+// ---------- tick ----------
+function _startTick() {
+  clearInterval(timerInterval);
+  timerInterval = setInterval(()=>{
+    if(timerState !== 'RUNNING') return;
+    timerSec--;
+    timerElapsed++;
+    timerAccum++;           // ★ 累積に1秒加算
+
+    if(timerSec <= 0){
+      // 25分1セッション完了 → 自動でリセットし次セッション待機
+      clearInterval(timerInterval);
+      timerState = 'IDLE';
+      timerSec   = POMO_TOTAL;
+      timerElapsed = 0;
+      const accumMin = Math.floor(timerAccum / 60);
+      toast(`🍅 25分完了！合計 ${accumMin}分 計測中。続けて開始できます`);
+    }
+    updateTimerUI();
+    updateDashTimerBadge();
+  }, 1000);
+}
+
+// ---------- controls ----------
+function timerStart() {
+  if(!db.subjects.length){ toast('先に科目を登録してください',true); return; }
+  const sel = document.getElementById('tov-subject');
+  // 初回 or セッション間の科目変更を許容
+  if(timerAccum === 0){
+    timerSubjectId = sel.value;
+  }
+  if(!timerSubjectId){ toast('科目を選択してください',true); return; }
+  timerState   = 'RUNNING';
+  timerSec     = POMO_TOTAL;
+  timerElapsed = 0;
+  _startTick();
+  updateTimerUI();
+}
+
+function timerPause() {
+  timerState = 'PAUSED';
+  clearInterval(timerInterval);
+  updateTimerUI();
+}
+
+function timerResume() {
+  timerState = 'RUNNING';
+  _startTick();
+  updateTimerUI();
+}
+
+function timerEnd() {
+  // ★ 累積秒 + 現セッションの未完了分を合算
+  const totalSec  = timerAccum + (timerState !== 'IDLE' ? timerElapsed : 0);
+  const totalMin  = Math.floor(totalSec / 60);
+
+  if(totalMin < 1){ toast('1分以上計測してから終了してください',true); return; }
+
+  clearInterval(timerInterval);
+  const sid = timerSubjectId;
+
+  // ★ 状態を完全リセット
+  timerState    = 'IDLE';
+  timerSec      = POMO_TOTAL;
+  timerElapsed  = 0;
+  timerAccum    = 0;
+  timerSubjectId = null;
+
+  overlayClose();
+
+  // 実績入力ページへ遷移して値をセット
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('nav button:not(.theme-btn)').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-log').classList.add('active');
+  const logBtn = document.querySelector('nav button:nth-child(4)');
+  if(logBtn) logBtn.classList.add('active');
+
+  renderLogPage();
+
+  // 科目・時間をセット
+  const subSel = document.getElementById('l-sub');
+  if(subSel && sid){
+    for(let i=0;i<subSel.options.length;i++){
+      if(subSel.options[i].value===sid){ subSel.selectedIndex=i; break; }
+    }
+  }
+  const timeEl = document.getElementById('l-time');
+  if(timeEl) timeEl.value = Math.min(totalMin, 1440);
+
+  toast(`合計 ${totalMin}分 を実施時間に反映しました ✏️`);
+  updateTimerUI();
+}
+
+// ---------- UI ----------
+function updateTimerUI() {
+  const m = Math.floor(timerSec/60).toString().padStart(2,'0');
+  const s = (timerSec%60).toString().padStart(2,'0');
+  document.getElementById('tov-display').textContent = `${m}:${s}`;
+
+  // リング：現セッション進捗
+  const circ = 2 * Math.PI * 108;
+  const sessionSec = timerState !== 'IDLE' ? timerElapsed : 0;
+  document.getElementById('tov-ring-fg').style.strokeDashoffset = circ * (1 - sessionSec / POMO_TOTAL);
+
+  // ★ 経過表示：累積 + 現セッション
+  const totalSec  = timerAccum + (timerState !== 'IDLE' ? timerElapsed : 0);
+  const totalMin  = Math.floor(totalSec / 60);
+  const totalSecR = totalSec % 60;
+  const sessMin   = Math.floor(timerElapsed / 60);
+  const sessSec   = timerElapsed % 60;
+
+  let elapsedText = `合計 ${totalMin}分${totalSecR>0?totalSecR+'秒':''}`;
+  if(timerAccum > 0 && timerState !== 'IDLE'){
+    elapsedText += `（今回 ${sessMin}分${sessSec>0?sessSec+'秒':''}）`;
+  }
+  document.getElementById('tov-elapsed').textContent = elapsedText;
+
+  const stateLabels = {
+    IDLE: timerAccum>0 ? `${Math.floor(timerAccum/60)}分完了 — 続けて開始できます` : '科目を選んで開始してください',
+    RUNNING: '集中中…',
+    PAUSED:  '一時停止中'
+  };
+  document.getElementById('tov-state').textContent = stateLabels[timerState] || '';
+
+  // 科目表示
+  const selArea = document.getElementById('tov-sel-area');
+  const subDisp = document.getElementById('tov-subject-display');
+  if(timerState === 'IDLE' && timerAccum === 0){
+    selArea.style.display=''; subDisp.style.display='none';
+  } else {
+    selArea.style.display='none'; subDisp.style.display='';
+    const sub = db.subjects.find(s=>s.id===timerSubjectId);
+    if(sub){
+      document.getElementById('tov-sdot').style.background = sub.color;
+      document.getElementById('tov-sname').textContent = sub.title;
+    }
+  }
+
+  document.getElementById('tov-start-btn').style.display  = timerState==='IDLE'    ? '' : 'none';
+  document.getElementById('tov-pause-btn').style.display  = timerState==='RUNNING' ? '' : 'none';
+  document.getElementById('tov-resume-btn').style.display = timerState==='PAUSED'  ? '' : 'none';
+
+  // 勉強終了：累積1分以上 or 計測中なら有効
+  const totalMin2 = Math.floor((timerAccum+(timerState!=='IDLE'?timerElapsed:0))/60);
+  const endBtn = document.getElementById('tov-end');
+  endBtn.disabled      = totalMin2 < 1;
+  endBtn.style.opacity = totalMin2 < 1 ? '0.4' : '1';
+}
+
+function updateDashTimerBadge() {
+  const statusEl = document.getElementById('dash-timer-status');
+  const stateEl  = document.getElementById('dash-timer-state');
+  if(!statusEl) return;
+  const m = Math.floor(timerSec/60).toString().padStart(2,'0');
+  const s = (timerSec%60).toString().padStart(2,'0');
+  statusEl.textContent = `${m}:${s}`;
+  stateEl.textContent  = timerState==='RUNNING'?'計測中 🔴':timerState==='PAUSED'?'一時停止':'待機中';
+  stateEl.style.color  = timerState==='RUNNING'?'#ef4444':'';
+}
+
+// ========== TODO ==========
+function addTodo() {
+  const text=document.getElementById('new-todo').value.trim();
+  if(!text) return toast('タスクを入力してください',true);
+  db.todos.push({id:uid(),taskName:text,isCompleted:false,createdAt:new Date().toISOString()});
+  save(db); document.getElementById('new-todo').value=''; renderTodo();
+}
+function toggleTodo(id) {
+  const t=db.todos.find(t=>t.id===id);
+  if(t){t.isCompleted=!t.isCompleted;save(db);renderTodo();}
+}
+function deleteTodo(id){db.todos=db.todos.filter(t=>t.id!==id);save(db);renderTodo();}
+function renderTodo() {
+  const el=document.getElementById('todo-list');
+  const remain=db.todos.filter(t=>!t.isCompleted).length;
+  document.getElementById('todo-count').textContent=remain;
+  if(!db.todos.length){el.innerHTML='<div class="empty">タスクがありません</div>';return;}
+  el.innerHTML=[...db.todos].sort((a,b)=>a.isCompleted-b.isCompleted).map(t=>`
+    <div class="todo-item ${t.isCompleted?'done':''}">
+      <div class="chk" onclick="toggleTodo('${t.id}')">${t.isCompleted?'✓':''}</div>
+      <span class="todo-text">${t.taskName}</span>
+      <button class="todo-del" onclick="deleteTodo('${t.id}')">×</button>
+    </div>`).join('');
+}
+
+// ========== BACKUP ==========
+function exportJSON() {
+  const blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`selftrack_${today()}.json`;
+  a.click(); URL.revokeObjectURL(a.href);
+  toast('エクスポートしました');
+}
+function importJSON(input) {
+  const file=input.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const p=JSON.parse(e.target.result);
+      if(!validate(p)) throw new Error();
+      db=p; save(db); toast('インポートしました'); renderBackup();
+    }catch{ toast('不正なファイルです',true); }
+    input.value='';
+  };
+  reader.readAsText(file);
+}
+function renderBackup(){
+  document.getElementById('data-status').innerHTML=`
+    科目数：${db.subjects.length} 件<br>
+    実績記録：${db.logs.length} 件<br>
+    ToDoタスク：${db.todos.length} 件<br>
+    最終更新：${db.lastUpdated?new Date(db.lastUpdated).toLocaleString('ja-JP'):'—'}<br>
+    バージョン：${db.version}`;
+}
+
+// ========== INIT ==========
+renderDashboard();
+updateTimerUI();
+</script>
+</body>
+</html>
