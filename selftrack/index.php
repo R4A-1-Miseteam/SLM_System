@@ -38,6 +38,13 @@ $parts  = explode('/', $path);
 
 // /api/{resource}/{id?}
 if ($parts[0] !== 'api') {
+    // SPA フォールバック: API 以外のリクエストは index.html を返す
+    $publicIndexPath = __DIR__ . '/public/index.html';
+    if (file_exists($publicIndexPath)) {
+        header('Content-Type: text/html; charset=utf-8');
+        readfile($publicIndexPath);
+        exit;
+    }
     http_response_code(404);
     echo json_encode(['error' => 'Not Found']);
     exit;
