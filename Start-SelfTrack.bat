@@ -28,7 +28,7 @@ timeout /t 2 /nobreak
 echo.
 echo Server started at %BACKEND_URL%
 echo Opening browser...
-start "" "%BACKEND_URL%"
+start "" "%BACKEND_URL%/public/"
 
 echo.
 echo Close this window to stop the server.

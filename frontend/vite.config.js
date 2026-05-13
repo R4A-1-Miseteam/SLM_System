@@ -17,5 +17,6 @@ export default defineConfig({
   build: {
     outDir: '../selftrack/public',
     sourcemap: false,
+    base: '/public/',
   },
 });
