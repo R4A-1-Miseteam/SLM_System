@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import Card from '../components/ui/Card.jsx';
 import Button from '../components/ui/Button.jsx';
-import Toast from '../components/ui/Toast.jsx';
 import { useStudyData } from '../hooks/useStudyData.js';
 import { today } from '../utils/dateUtils.js';
 
@@ -9,33 +9,43 @@ import { today } from '../utils/dateUtils.js';
  * 学習実績記録画面（FR-003 / FR-004 / FR-011）
  * 日付・科目・時間・ページ数を手動入力して保存
  */
-export default function StudyLog() {
+export default function StudyLog({ showToast }) {
+  const location = useLocation();
   const { subjects, logs, saveLog, deleteLog } = useStudyData();
-  const [form, setForm] = useState({
+  const [timerPrefillApplied, setTimerPrefillApplied] = useState(false);
+  const [form, setForm] = useState(() => ({
     subjectId: '',
     date: today(),
-    duration: 0,
+    duration: location.state?.timerDuration ?? 0,
     pageCount: 0,
     comment: '',
-  });
-  const [toast, setToast] = useState({ message: '', type: 'info' });
+  }));
   const [filterSubject, setFilterSubject] = useState('');
+
+  useEffect(() => {
+    const duration = location.state?.timerDuration;
+    if (duration != null && !timerPrefillApplied) {
+      setForm((prev) => ({ ...prev, duration }));
+      setTimerPrefillApplied(true);
+      showToast('タイマー経過時間を反映しました。科目を選択して保存してください', 'info');
+    }
+  }, [location.state, timerPrefillApplied, showToast]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
     try {
       saveLog(form);
-      setToast({ message: '実績を保存しました', type: 'success' });
       setForm({ ...form, duration: 0, pageCount: 0, comment: '' });
+      showToast('実績を保存しました', 'success');
     } catch (err) {
-      setToast({ message: err.message, type: 'error' });
+      showToast(err.message, 'error');
     }
   };
 
   const handleDelete = (id) => {
     if (window.confirm('この実績を削除しますか？')) {
       deleteLog(id);
-      setToast({ message: '実績を削除しました', type: 'success' });
+      showToast('実績を削除しました', 'success');
     }
   };
 
@@ -167,12 +177,6 @@ export default function StudyLog() {
           </table>
         )}
       </Card>
-
-      <Toast
-        message={toast.message}
-        type={toast.type}
-        onClose={() => setToast({ message: '', type: 'info' })}
-      />
     </div>
   );
 }

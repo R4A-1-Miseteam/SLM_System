@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import TimerRing from './TimerRing.jsx';
 import Button from '../ui/Button.jsx';
 import { useTimer } from '../../hooks/useTimer.js';
@@ -11,8 +12,9 @@ import { today } from '../../utils/dateUtils.js';
  * 終了時に経過分数を学習ログへ反映する補助動線を提供する
  */
 export default function TimerOverlay({ open, onClose }) {
+  const navigate = useNavigate();
   const timer = useTimer();
-  const { subjects, saveLog } = useStudyData();
+  const { subjects } = useStudyData();
   const [selectedSubjectId, setSelectedSubjectId] = useState(timer.subjectId ?? '');
   const [savedMessage, setSavedMessage] = useState('');
 
@@ -28,21 +30,17 @@ export default function TimerOverlay({ open, onClose }) {
 
   const handleFinish = () => {
     const minutes = timer.commitElapsedMinutes();
-    if (minutes > 0 && selectedSubjectId) {
-      try {
-        saveLog({
-          subjectId: selectedSubjectId,
-          date: today(),
-          duration: minutes,
-          pageCount: 0,
-          comment: 'タイマーから自動登録',
-        });
-        setSavedMessage(`✅ ${minutes}分を実績として記録しました`);
-      } catch (err) {
-        setSavedMessage(`⚠️ ${err.message}`);
-      }
+    if (!selectedSubjectId) {
+      alert('科目を選択してください');
+      return;
+    }
+    if (minutes <= 0) {
+      setSavedMessage('経過時間がありません');
+      return;
     }
     timer.reset();
+    onClose();
+    navigate('/logs', { state: { timerDuration: minutes } });
   };
 
   return (

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import SubjectProgress from '../components/dashboard/SubjectProgress.jsx';
 import ProgressChart from '../components/dashboard/ProgressChart.jsx';
 import TodayReminder from '../components/dashboard/TodayReminder.jsx';
@@ -12,6 +12,7 @@ import { useAchievement } from '../hooks/useAchievement.js';
  */
 export default function Dashboard() {
   const achievements = useAchievement();
+  const [chartMode, setChartMode] = useState('bar');
 
   return (
     <div className="page page--dashboard">
@@ -27,7 +28,21 @@ export default function Dashboard() {
         </div>
 
         <div className="dashboard-grid__col">
-          <ProgressChart mode="line" />
+          <ProgressChart mode={chartMode} />
+          <div className="chart-controls">
+            <button 
+              className={chartMode === 'line' ? 'active' : ''} 
+              onClick={() => setChartMode('line')}
+            >
+              折れ線グラフ
+            </button>
+            <button 
+              className={chartMode === 'bar' ? 'active' : ''} 
+              onClick={() => setChartMode('bar')}
+            >
+              棒グラフ
+            </button>
+          </div>
         </div>
       </div>
 

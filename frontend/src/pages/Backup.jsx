@@ -1,7 +1,6 @@
 import React, { useRef, useState } from 'react';
 import Card from '../components/ui/Card.jsx';
 import Button from '../components/ui/Button.jsx';
-import Toast from '../components/ui/Toast.jsx';
 import { useStudyData } from '../hooks/useStudyData.js';
 import { exportToFile, importFromFile } from '../utils/backupUtils.js';
 
@@ -9,17 +8,16 @@ import { exportToFile, importFromFile } from '../utils/backupUtils.js';
  * バックアップ画面（FR-007 / FR-008 / FR-015）
  * LocalStorage の全データを JSON 形式で書き出し / 復元する
  */
-export default function Backup() {
+export default function Backup({ showToast }) {
   const { rawData, replaceAll, subjects, logs, todos, lastUpdated } = useStudyData();
-  const [toast, setToast] = useState({ message: '', type: 'info' });
   const fileInputRef = useRef(null);
 
   const handleExport = () => {
     try {
       exportToFile(rawData);
-      setToast({ message: 'JSONファイルをダウンロードしました', type: 'success' });
+      showToast('JSONファイルをダウンロードしました', 'success');
     } catch (err) {
-      setToast({ message: 'エクスポートに失敗しました', type: 'error' });
+      showToast(`エクスポートに失敗しました: ${err.message}`, 'error');
     }
   };
 
@@ -33,9 +31,9 @@ export default function Backup() {
     try {
       const data = await importFromFile(file);
       replaceAll(data);
-      setToast({ message: 'インポートに成功しました', type: 'success' });
+      showToast('インポートに成功しました', 'success');
     } catch (err) {
-      setToast({ message: err.message, type: 'error' });
+      showToast(err.message, 'error');
     } finally {
       e.target.value = '';
     }
@@ -86,12 +84,6 @@ export default function Backup() {
           </Button>
         </div>
       </Card>
-
-      <Toast
-        message={toast.message}
-        type={toast.type}
-        onClose={() => setToast({ message: '', type: 'info' })}
-      />
     </div>
   );
 }

@@ -9,7 +9,7 @@ const NAV_ITEMS = [
   { to: '/dashboard', label: 'ダッシュボード', icon: '📊' },
   { to: '/goals',     label: '週次目標',       icon: '🎯' },
   { to: '/logs',      label: '実績記録',       icon: '✏️' },
-  { to: '/todos',     label: 'ToDo',           icon: '✅' },
+  { to: '/todos',     label: '学習記録',       icon: '📚' },
   { to: '/backup',    label: 'バックアップ',   icon: '💾' },
 ];
 
