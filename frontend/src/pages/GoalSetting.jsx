@@ -1,18 +1,17 @@
 import React, { useState } from 'react';
 import Card from '../components/ui/Card.jsx';
 import Button from '../components/ui/Button.jsx';
-import Toast from '../components/ui/Toast.jsx';
 import { useStudyData } from '../hooks/useStudyData.js';
 
 /**
  * 週次目標設定画面（FR-001 / FR-002）
  * 科目の追加・編集・削除と週次目標(時間/ページ)の設定
  */
-export default function GoalSetting() {
-  const { subjects, addSubject, updateSubject, deleteSubject } = useStudyData();
+export default function GoalSetting({ showToast }) {
+  const { subjects, addSubject, updateSubject, deleteSubject, todos, addTodo, toggleTodo, deleteTodo } = useStudyData();
   const [form, setForm] = useState({ title: '', targetTime: 0, targetPage: 0, memo: '' });
   const [editingId, setEditingId] = useState(null);
-  const [toast, setToast] = useState({ message: '', type: 'info' });
+  const [todoTask, setTodoTask] = useState('');
 
   const resetForm = () => {
     setForm({ title: '', targetTime: 0, targetPage: 0, memo: '' });
@@ -24,14 +23,14 @@ export default function GoalSetting() {
     try {
       if (editingId) {
         updateSubject(editingId, form);
-        setToast({ message: '科目を更新しました', type: 'success' });
+        showToast('科目を更新しました', 'success');
       } else {
         addSubject(form);
-        setToast({ message: '科目を登録しました', type: 'success' });
+        showToast('科目を登録しました', 'success');
       }
       resetForm();
     } catch (err) {
-      setToast({ message: err.message, type: 'error' });
+      showToast(err.message, 'error');
     }
   };
 
@@ -48,8 +47,26 @@ export default function GoalSetting() {
   const handleDelete = (id, title) => {
     if (window.confirm(`「${title}」を削除しますか？関連する学習ログも削除されます。`)) {
       deleteSubject(id);
-      setToast({ message: '科目を削除しました', type: 'success' });
+      showToast('科目を削除しました', 'success');
       if (editingId === id) resetForm();
+    }
+  };
+
+  const handleAddTodo = (e) => {
+    e.preventDefault();
+    try {
+      addTodo(todoTask);
+      setTodoTask('');
+      showToast('ToDoを追加しました', 'success');
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  };
+
+  const handleDeleteTodo = (id) => {
+    if (window.confirm('このToDoを削除しますか？')) {
+      deleteTodo(id);
+      showToast('ToDoを削除しました', 'success');
     }
   };
 
@@ -145,11 +162,35 @@ export default function GoalSetting() {
         )}
       </Card>
 
-      <Toast
-        message={toast.message}
-        type={toast.type}
-        onClose={() => setToast({ message: '', type: 'info' })}
-      />
+      <Card title="ToDoリスト">
+        <form className="form form--inline" onSubmit={handleAddTodo}>
+          <input
+            type="text"
+            value={todoTask}
+            onChange={(e) => setTodoTask(e.target.value)}
+            placeholder="例：英文法の章末問題を解く"
+            required
+          />
+          <Button type="submit" variant="primary">追加</Button>
+        </form>
+        {todos.length > 0 && (
+          <ul className="todo-list">
+            {todos.map((t) => (
+              <li key={t.id} className={`todo-item ${t.isCompleted ? 'is-completed' : ''}`}>
+                <label className="todo-item__check">
+                  <input
+                    type="checkbox"
+                    checked={t.isCompleted}
+                    onChange={() => toggleTodo(t.id)}
+                  />
+                  <span className="todo-item__name">{t.taskName}</span>
+                </label>
+                <Button size="sm" variant="danger" onClick={() => handleDeleteTodo(t.id)}>削除</Button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
     </div>
   );
 }

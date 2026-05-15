@@ -18,5 +18,14 @@ export default defineConfig({
     outDir: '../selftrack/public',
     sourcemap: false,
     base: '/public/',
+    assetsDir: 'assets',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+          ui: ['recharts'],
+        },
+      },
+    },
   },
 });
